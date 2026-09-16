@@ -12,4 +12,4 @@ go run ./cmd/probe -url <URL>         # status, headers e formato de uma URL
 go run -tags audio ./cmd/probe -url <faixa> -play   # tocar (requer beep v2)
 ```
 
-Passo a passo da captura e o que falta descobrir: [docs/bandle-protocol.md](docs/bandle-protocol.md).
+Contexto completo para continuar: [docs/HANDOFF.md](docs/HANDOFF.md). Passo a passo da captura e o que falta descobrir: [docs/bandle-protocol.md](docs/bandle-protocol.md).
