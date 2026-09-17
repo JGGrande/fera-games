@@ -1,0 +1,24 @@
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    - unconvert
+    - unparam
+  settings:
+    errcheck:
+      # `defer x.Close()` em leitura é idiomático; nada útil a fazer com o erro.
+      exclude-functions:
+        - (io.Closer).Close
+        - (io.ReadCloser).Close
+        - (*os.File).Close
+        - (github.com/gopxl/beep/v2.StreamSeekCloser).Close
+        - (fera-games/internal/audio.Player).Close
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes: [ "fera-games" ]

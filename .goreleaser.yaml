@@ -1,0 +1,36 @@
+# Build local: goreleaser build --snapshot --clean
+# Sem release público: o projeto é de uso pessoal.
+#
+# Áudio (oto v3): macOS e Windows são sem cgo e cruzam de qualquer host;
+# Linux precisa de cgo + ALSA, então só compila nativamente (amd64 no runner).
+version: 2
+
+builds:
+  - id: fera-linux
+    main: ./cmd/fera
+    binary: fera
+    env: [CGO_ENABLED=1]
+    goos: [linux]
+    goarch: [amd64]
+    ldflags: ["-s -w -X main.version={{.Version}}"]
+  - id: fera-cross
+    main: ./cmd/fera
+    binary: fera
+    env: [CGO_ENABLED=0]
+    goos: [darwin, windows]
+    goarch: [amd64, arm64]
+    ldflags: ["-s -w -X main.version={{.Version}}"]
+
+# Sem tag git a versão seria 0.0.0-SNAPSHOT; FERA_VERSION=v0.1.0 força o nome.
+snapshot:
+  version_template: >-
+    {{ if index .Env "FERA_VERSION" }}{{ .Env.FERA_VERSION }}{{ else }}{{ .Version }}-SNAPSHOT-{{ .ShortCommit }}{{ end }}
+
+archives:
+  - formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+
+release:
+  disable: true

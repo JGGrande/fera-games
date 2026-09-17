@@ -1,0 +1,29 @@
+{
+  "instruments": [
+    "drum",
+    "[bass] + [electric]",
+    "strings",
+    "piano",
+    "voice",
+    "clue"
+  ],
+  "youtube": "nCkpzqqog4k",
+  "youtubeStart": 228,
+  "bpm": 82,
+  "clue": {
+    "de": "Ich bin nicht der Einzige",
+    "en": "I Am Not the Sole Individual",
+    "es": "No soy la única persona",
+    "fr": "Je ne suis pas la seule personne"
+  },
+  "wiki_en": "I%27m_Not_the_Only_One",
+  "wiki_fr": "I%27m_Not_the_Only_One",
+  "wiki_es": "I%27m_Not_the_Only_One",
+  "spotifyId": "7795WJLVKJoAyVoOtCWqXN",
+  "stream": 2600,
+  "appleMusicId": "1440814433",
+  "frontperson": "Sam Smith",
+  "sources": [
+    "Sam Smith"
+  ]
+}

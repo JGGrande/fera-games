@@ -1,15 +1,14 @@
-# Fera Games
+# Voce é o Fera Games?
 
-Cliente de terminal (Go 1.26 + Bubble Tea) para jogos diários. Uso pessoal.
+Cliente de terminal para descobrir o real ser humano games.
 
-## Fase 0 — spike do protocolo do Bandle
+## Rodar
 
 ```
-go test ./...                         # numeração do puzzle, parser de HAR, detecção de formato
-go run ./cmd/probe                    # número do Bandle de hoje
-go run ./cmd/harscan -har bandle.har  # relatório de endpoints + payloads em testdata/
-go run ./cmd/probe -url <URL>         # status, headers e formato de uma URL
-go run -tags audio ./cmd/probe -url <faixa> -play   # tocar (requer beep v2)
+make run                     # abre o menu; enter no Bandle joga o puzzle de hoje; q volta/sai
+make run ARGS=--mute         # sem áudio (a barra de progresso anda mesmo assim)
+make build                   # compila ./fera
+make check                   # fmt + vet + test + lint (instala o golangci-lint v2 se faltar)
+make snapshot VERSION=v0.1.0 # binários linux/darwin/windows em dist/ (instala o goreleaser se faltar)
+make                         # lista todos os alvos
 ```
-
-Contexto completo para continuar: [docs/HANDOFF.md](docs/HANDOFF.md). Passo a passo da captura e o que falta descobrir: [docs/bandle-protocol.md](docs/bandle-protocol.md).

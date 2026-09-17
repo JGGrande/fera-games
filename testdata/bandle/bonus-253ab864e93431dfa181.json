@@ -1,0 +1,273 @@
+[
+  {
+    "type": "photo",
+    "data": {
+      "answers": [
+        {
+          "id": 1786012206,
+          "count": 4324,
+          "label": "https://i.scdn.co/image/ab676161000051743262e01b79152c4f8007f3ac",
+          "value": "Sam Smith",
+          "correct": true
+        },
+        {
+          "id": 1786012207,
+          "count": 484,
+          "label": "https://i.scdn.co/image/ab676161000051745ca6c70cd9661b2eca98999f",
+          "value": "Mike Posner"
+        },
+        {
+          "id": 1786012208,
+          "count": 211,
+          "label": "https://i.scdn.co/image/ab676161000051746721f541fb123145d4cb3ace",
+          "value": "Charlie Puth"
+        },
+        {
+          "id": 1786012209,
+          "count": 78,
+          "label": "https://i.scdn.co/image/ab6761610000517486e362deb9f22566331fbdeb",
+          "value": "Justin Bieber"
+        }
+      ]
+    }
+  },
+  {
+    "type": "nationality",
+    "data": {
+      "answers": [
+        {
+          "id": 1786012206,
+          "count": 3265,
+          "label": "England",
+          "correct": true
+        },
+        {
+          "id": 1786012207,
+          "count": 1383,
+          "label": "USA"
+        },
+        {
+          "id": 1786012208,
+          "count": 64,
+          "label": "Denmark"
+        },
+        {
+          "id": 1786012209,
+          "count": 250,
+          "label": "Ireland"
+        }
+      ]
+    }
+  },
+  {
+    "type": "trivia1",
+    "data": {
+      "answers": [
+        {
+          "id": 1786090009,
+          "count": 816,
+          "label": {
+            "de": "Taylor Swift",
+            "en": "Taylor Swift",
+            "es": "Taylor Swift",
+            "fr": "Taylor Swift",
+            "pt": "Taylor Swift"
+          },
+          "correct": true
+        },
+        {
+          "id": 1786090010,
+          "count": 2803,
+          "label": {
+            "de": "Adele",
+            "en": "Adele",
+            "es": "Adele",
+            "fr": "Adele",
+            "pt": "Adele"
+          }
+        },
+        {
+          "id": 1786090011,
+          "count": 309,
+          "label": {
+            "de": "Rihanna",
+            "en": "Rihanna",
+            "es": "Rihanna",
+            "fr": "Rihanna",
+            "pt": "Rihanna"
+          }
+        },
+        {
+          "id": 1786090012,
+          "count": 943,
+          "label": {
+            "de": "Lady Gaga",
+            "en": "Lady Gaga",
+            "es": "Lady Gaga",
+            "fr": "Lady Gaga",
+            "pt": "Lady Gaga"
+          }
+        }
+      ],
+      "question": {
+        "de": "Wer holte Sam Smith 2014 bei einem ihrer Konzerte auf die Bühne?",
+        "en": "Who brought Sam Smith on stage during one of her concerts in 2014?",
+        "es": "¿Quién invitó a Sam Smith al escenario durante uno de sus conciertos en 2014?",
+        "fr": "Qui a fait monter Sam Smith sur scène pendant l'un de ses concerts en 2014 ?",
+        "pt": "Quem chamou Sam Smith ao palco durante um de seus shows em 2014?"
+      }
+    }
+  },
+  {
+    "type": "year1",
+    "data": {
+      "answers": [
+        {
+          "id": 1786012206,
+          "count": 3935,
+          "label": "Jessie J, Ariana Grande, Nicki Minaj - Bang Bang",
+          "value": 2014,
+          "correct": true
+        },
+        {
+          "id": 1786012207,
+          "count": 122,
+          "label": "Bon Jovi - It's My Life",
+          "value": 2000
+        },
+        {
+          "id": 1786012208,
+          "count": 230,
+          "label": "50 Cent - P.I.M.P. (feat. Snoop Dogg, Lloyd Banks, Young Buck)",
+          "value": 2003
+        },
+        {
+          "id": 1786012209,
+          "count": 380,
+          "label": "Benson Boone - Beautiful Things",
+          "value": 2024
+        }
+      ]
+    }
+  },
+  {
+    "type": "year2",
+    "data": {
+      "answers": [
+        {
+          "id": 1786012206,
+          "count": 58,
+          "label": "Ariana Grande - Break Free ft. Zedd",
+          "value": 2014,
+          "correct": true
+        },
+        {
+          "id": 1786012207,
+          "count": 12,
+          "label": "Post Malone - Congratulations (feat. Quavo)",
+          "value": 2016
+        },
+        {
+          "id": 1786012208,
+          "count": 34,
+          "label": "Bruno Mars - That's What I Like",
+          "value": 2016
+        },
+        {
+          "id": 1786012209,
+          "count": 31,
+          "label": "Imagine Dragons - On Top of the World",
+          "value": 2012
+        }
+      ]
+    }
+  },
+  {
+    "type": "album",
+    "data": {
+      "answers": [
+        {
+          "id": 1783015213,
+          "count": 2190,
+          "label": "In the Lonely Hour",
+          "correct": true
+        },
+        {
+          "id": 1783015214,
+          "count": 531,
+          "label": "Sam Smith"
+        },
+        {
+          "id": 1783015215,
+          "count": 580,
+          "label": "I'm Not the Only One"
+        },
+        {
+          "id": 1783015216,
+          "count": 1431,
+          "label": "Stay with Me"
+        }
+      ]
+    }
+  },
+  {
+    "type": "tempo",
+    "data": {
+      "answers": [
+        {
+          "id": 1786012206,
+          "count": 1129,
+          "label": "Panic! At The Disco - High Hopes",
+          "value": 82,
+          "correct": true
+        },
+        {
+          "id": 1786012207,
+          "count": 2648,
+          "label": "The Weeknd - Save Your Tears",
+          "value": 118
+        },
+        {
+          "id": 1786012208,
+          "count": 532,
+          "label": "DNCE - Cake by the Ocean",
+          "value": 119
+        },
+        {
+          "id": 1786012209,
+          "count": 353,
+          "label": "Lady Gaga - Just Dance",
+          "value": 119
+        }
+      ]
+    }
+  },
+  {
+    "type": "instruments",
+    "data": {
+      "answers": [
+        {
+          "id": 1786012206,
+          "count": 1962,
+          "label": "Gym Class Heroes - Stereo Hearts ft. Adam Levine",
+          "correct": true
+        },
+        {
+          "id": 1786012207,
+          "count": 755,
+          "label": "Luis Fonsi - Despacito"
+        },
+        {
+          "id": 1786012208,
+          "count": 1265,
+          "label": "Red Hot Chili Peppers - Snow (Hey Oh)"
+        },
+        {
+          "id": 1786012209,
+          "count": 578,
+          "label": "Kesha - Die Young"
+        }
+      ]
+    }
+  }
+]
