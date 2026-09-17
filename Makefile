@@ -18,8 +18,23 @@ GORELEASER ?= $(shell $(GO) env GOPATH)/bin/goreleaser
 help: ## lista os alvos
 	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z_-]+:.*##/ {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
+.PHONY: check-audio-deps
+check-audio-deps: ## garante libasound2-dev (Linux) para compilar o oto/v3
+ifeq ($(shell uname -s),Linux)
+	@pkg-config --exists alsa || { \
+		echo "==> libasound2-dev (pkg-config: alsa) não encontrado."; \
+		if command -v apt-get >/dev/null 2>&1; then \
+			echo "==> instalando via apt-get (vai pedir senha do sudo)..."; \
+			sudo apt-get update && sudo apt-get install -y libasound2-dev; \
+		else \
+			echo "Instale o pacote de desenvolvimento do ALSA para sua distro (ex.: alsa-lib-devel no Fedora, alsa-lib no Arch) e rode 'make run' de novo."; \
+			exit 1; \
+		fi; \
+	}
+endif
+
 .PHONY: run
-run: ## abre o menu (go run ./cmd/fera)
+run: check-audio-deps ## abre o menu (go run ./cmd/fera)
 	$(GO) run ./cmd/fera $(ARGS)
 
 .PHONY: build
@@ -61,11 +76,11 @@ probe: ## puzzle de hoje sem spoiler (go run ./cmd/probe -file today)
 	$(GO) run ./cmd/probe -file today
 
 .PHONY: play
-play: ## toca a faixa 1 de hoje (Linux: precisa de libasound2-dev e pkg-config)
+play: check-audio-deps ## toca a faixa 1 de hoje
 	$(GO) run ./cmd/probe -file stem:1 -play
 
 .PHONY: walk
-walk: ## toca os estágios 1..5 de hoje trocando a cada 4 s (teste de ouvido da Fase 3)
+walk: check-audio-deps ## toca os estágios 1..5 de hoje trocando a cada 4 s (teste de ouvido da Fase 3)
 	$(GO) run ./cmd/probe -walk 4s
 
 .PHONY: snapshot
