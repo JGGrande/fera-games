@@ -327,3 +327,34 @@ func TestFitsMinimumHeight(t *testing.T) {
 		t.Fatalf("tela com %d linhas não cabe em 24:\n%s", len(lines), ansi.Strip(m.View()))
 	}
 }
+
+func TestCopyTextCombinesFinishedCategories(t *testing.T) {
+	m, _ := loaded(t)
+	if got := m.copyText(); strings.Contains(got, "[Rock]") {
+		t.Fatalf("sem categorias concluídas não deveria ser multi:\n%s", got)
+	}
+	// Conclui All e Rock com 5 pulos cada.
+	for _, cat := range []string{"1", "2"} {
+		m, _ = m.Update(tea.KeyPressMsg{Code: rune(cat[0]), Text: cat})
+		m = feed(m)
+		for i := 0; i < songless.MaxGuesses; i++ {
+			var cmd tea.Cmd
+			m, cmd = m.Update(tab)
+			for _, msg := range runSlow(cmd) {
+				m = feed(m, msg)
+			}
+		}
+		if m.phase != phaseFinished {
+			t.Fatalf("categoria %s não terminou: phase=%d", cat, m.phase)
+		}
+	}
+	got := m.copyText()
+	for _, want := range []string{"[All]", "[Rock]"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("copyText sem %q:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "[Hip Hop]") {
+		t.Errorf("Hip Hop não foi jogado:\n%s", got)
+	}
+}

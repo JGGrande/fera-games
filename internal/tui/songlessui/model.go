@@ -362,7 +362,7 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, m.keys.Copy):
 			m.copied = true
-			return m, clip.Copy(m.shareText())
+			return m, clip.Copy(m.copyText())
 		case key.Matches(msg, m.keys.PlayPause):
 			m.togglePlay()
 		}
@@ -610,6 +610,48 @@ func (m Model) shareText() string {
 		return ""
 	}
 	return m.session.ShareText()
+}
+
+// copyText é o que o c copia: com mais de uma categoria concluída hoje, o
+// resumo do site com todas (inclusive as salvas de execuções anteriores);
+// com uma só, o texto dela.
+func (m Model) copyText() string {
+	var rows []struct {
+		Category string
+		Board    []songless.Outcome
+	}
+	for _, c := range m.daily.Categories {
+		if board, ok := m.finishedBoard(c.ID); ok {
+			rows = append(rows, struct {
+				Category string
+				Board    []songless.Outcome
+			}{c.Name, board})
+		}
+	}
+	if len(rows) < 2 {
+		return m.shareText()
+	}
+	return songless.ShareMulti(m.daily.Date, rows)
+}
+
+// finishedBoard devolve as tentativas de uma categoria já concluída, vindas da
+// sessão em memória ou do disco.
+func (m Model) finishedBoard(cat int) ([]songless.Outcome, bool) {
+	if s := m.sessions[cat]; s != nil && s.State().Status != game.Playing {
+		return s.Outcomes(), true
+	}
+	if m.deps.Store == nil || m.daily.Date == "" {
+		return nil, false
+	}
+	match, ok, err := m.deps.Store.Load(gameID, m.dayKey(cat))
+	if err != nil || !ok {
+		return nil, false
+	}
+	var snap songless.Snapshot
+	if json.Unmarshal(match.Data, &snap) != nil || !snap.Finished() {
+		return nil, false
+	}
+	return snap.Outcomes, true
 }
 
 // dayKey é a chave por categoria: YYYY-MM-DD#cat.
