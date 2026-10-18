@@ -13,6 +13,9 @@ import (
 	"fera-games/internal/audio"
 	"fera-games/internal/games/bandle"
 	"fera-games/internal/games/bandle/bandletest"
+	"fera-games/internal/games/songless"
+	"fera-games/internal/games/songless/songlesstest"
+	"fera-games/internal/tui/menu"
 	"fera-games/internal/tui/theme"
 )
 
@@ -54,6 +57,7 @@ func TestMenuFitsMinimumSize(t *testing.T) {
 func fakeDeps(t *testing.T) Deps {
 	return Deps{
 		Bandle:     bandle.NewGame(bandletest.New(t)),
+		Songless:   songless.NewGame(songlesstest.New(t)),
 		OpenPlayer: func() (audio.Player, error) { return audio.NewSilent(), nil },
 	}
 }
@@ -127,4 +131,27 @@ func drain(cmd tea.Cmd) []tea.Msg {
 		return out
 	}
 	return []tea.Msg{msg}
+}
+
+func TestDownOpensSonglessAndQReturns(t *testing.T) {
+	m := NewWith(Config{}, fakeDeps(t))
+	var cur tea.Model = m
+	cur, _ = cur.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
+
+	// Desce até Songless (Bandle=0, Termo=1 indisponível, Songless=2).
+	cur, _ = cur.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	cur, _ = cur.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	cur, cmd := cur.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	if cmd == nil {
+		t.Fatal("enter não gerou comando")
+	}
+	cur, _ = cur.Update(cmd())
+	if cur.(Model).screen != screenSongless {
+		t.Fatalf("SelectedMsg não abriu o Songless (screen=%d)", cur.(Model).screen)
+	}
+	// O SelectedMsg do menu carrega o ID; garante que é songless.
+	if cur.(Model).songless == nil {
+		t.Fatal("tela do Songless não foi criada")
+	}
+	_ = menu.SelectedMsg{}
 }

@@ -2,19 +2,25 @@ package bandle
 
 import (
 	"encoding/json"
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
+
+	"fera-games/internal/games/bandle/fixture"
 )
 
+// testdata serve as respostas de fixture pelo nome que o servidor usa.
 func testdata(t *testing.T, name string) []byte {
 	t.Helper()
-	b, err := os.ReadFile(filepath.Join("..", "..", "..", "testdata", "bandle", name))
-	if err != nil {
-		t.Fatal(err)
+	switch name {
+	case "planning-2026-09-16.json":
+		return []byte(fixture.PlanningJSON)
+	case "planning-2026-09-16.txt":
+		return []byte(encrypt(EncryptionKey(), []byte(fixture.PlanningJSON)))
+	case "guesslist-songs.json":
+		return []byte(fixture.CatalogJSON)
 	}
-	return b
+	t.Fatalf("fixture desconhecida: %s", name)
+	return nil
 }
 
 func TestEncryptionKey(t *testing.T) {
@@ -72,21 +78,22 @@ func TestCatalog(t *testing.T) {
 	if err := json.Unmarshal(testdata(t, "guesslist-songs.json"), &cat); err != nil {
 		t.Fatal(err)
 	}
-	if len(cat) < 2000 {
-		t.Fatalf("catálogo com %d itens, esperava >2000", len(cat))
+	if len(cat) == 0 {
+		t.Fatal("catálogo vazio")
 	}
 	var ps []Puzzle
 	_ = json.Unmarshal(testdata(t, "planning-2026-09-16.json"), &ps)
 	// Fato observado em 2026-09-16: a resposta do dia não vinha no guesslist,
 	// por isso MergeAnswer existe.
 	merged := MergeAnswer(cat, ps[0])
-	if len(merged) != len(cat)+1 || merged[1000].Title != ps[0].Song {
-		t.Fatalf("MergeAnswer não inseriu a resposta na posição 1000 (len %d → %d)", len(cat), len(merged))
+	at := len(cat) // MergeAnswer insere em min(1000, len)
+	if len(merged) != len(cat)+1 || merged[at].Title != ps[0].Song {
+		t.Fatalf("MergeAnswer não inseriu a resposta na posição %d (len %d → %d)", at, len(cat), len(merged))
 	}
 	if again := MergeAnswer(merged, ps[0]); len(again) != len(merged) {
 		t.Errorf("MergeAnswer duplicou a resposta")
 	}
-	if Judge(ps[0], &merged[1000]) != OutcomeCorrect {
+	if Judge(ps[0], &merged[at]) != OutcomeCorrect {
 		t.Errorf("a entrada inserida não é julgada como acerto")
 	}
 }

@@ -50,7 +50,7 @@ Layout de pacotes (✅ = já existe):
 ```
 cmd/fera/           ✅  main: flags --mute, --data-dir, --version; roda o app
 cmd/probe/          ✅  spike: baixa/decifra qualquer arquivo do Bandle (-file), inspeção de URL, tocar (-play) e passear pelos estágios (-walk)
-cmd/harscan/        ✅  spike: HAR do DevTools → relatório de endpoints + testdata (não foi preciso usar)
+cmd/harscan/        ✅  spike: HAR do DevTools → relatório de endpoints (não foi preciso usar)
 internal/app/       ✅  router (menu ↔ Bandle), Config, Deps injetáveis (jogo, abertura do áudio), lista de jogos do hub
 internal/tui/       ✅  theme, menu, bandleui (tela do Bandle: player, grade, dicas, input com autocomplete)
 internal/game/      ✅  interfaces Game, Session, State, Result e Info (menu)
@@ -59,7 +59,7 @@ internal/audio/     ✅  Track (mp3 → memória), Player (play/pause/seek/loop,
 internal/store/     ✅  Store: <DataDir>/<jogo>.json com as partidas por dia (Match com Data = Snapshot do jogo) e Stats (jogadas, vitórias, sequências)
 internal/httpx/     ✅  Client (timeout, User-Agent, StatusError) e Cache em disco (Get/Fresh/Put atômico); sem retry por enquanto
 internal/har/       ✅  parser/classificador de HAR
-testdata/bandle/    ✅  payloads reais de 2026-09-16: puzzle (cifrado e decifrado), catálogo, details, bonus
+docs/respostas-api.md ✅  respostas reais documentadas; fixtures mínimas em games/*/fixture
 ```
 
 ## 3. Stack
@@ -72,7 +72,7 @@ testdata/bandle/    ✅  payloads reais de 2026-09-16: puzzle (cifrado e decifra
 | Fuzzy | `github.com/sahilm/fuzzy` |
 | HTTP | `net/http` com cache em disco |
 | Persistência | JSON em `os.UserConfigDir()` |
-| Testes | `testing`, `teatest` (golden), `httptest` com os payloads de `testdata/` |
+| Testes | `testing`, `teatest` (golden), `httptest` com fixtures em `games/*/fixture` |
 | Build | GoReleaser + GitHub Actions (build local, sem release público) |
 
 UX do terminal:
@@ -138,7 +138,7 @@ No Linux o áudio exige `libasound2-dev` e `pkg-config` (oto v3 usa cgo+ALSA); a
 
 | Risco | Mitigação |
 | --- | --- |
-| API não documentada muda | Provider isolado, testes com `testdata/`, erro claro na TUI |
+| API não documentada muda | Provider isolado, testes com fixtures, erro claro na TUI |
 | Chave de decifragem ou apiKey mudam no bundle | `TestEncryptionKey` quebra; refazer a extração (§5 de `bandle-protocol.md`) |
 | Áudio falha em WSL, SSH ou container | `--mute` e mensagem de orientação |
 | Troca de estágio com estalo | Arquivos têm a mesma duração: trocar a fonte e `Seek` para a mesma posição |

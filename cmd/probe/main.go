@@ -6,7 +6,14 @@
 //   - baixa só o começo de uma URL qualquer e detecta o formato;
 //   - toca a faixa ou passeia pelos estágios com internal/audio (oto v3 + beep).
 //
-// Uso:
+// Também espia o Songless (sem auth):
+//
+//	go run ./cmd/probe -songless-today                 # data + fileUrls do dia
+//	go run ./cmd/probe -songless-search mountain       # autocomplete remoto
+//	go run ./cmd/probe -songless-guess -songless-cat 1 # 5 skips até revelar
+//	go run ./cmd/probe -songless-play -songless-cat 0 -songless-round 1
+//
+// Uso (Bandle):
 //
 //	go run ./cmd/probe                                  # número do puzzle de hoje
 //	go run ./cmd/probe -file today                      # puzzle de hoje (campos sem spoiler)
@@ -47,7 +54,34 @@ func main() {
 	walkEvery := flag.Duration("walk", 0, "tocar os estágios 1..5 de hoje trocando a cada intervalo (ex.: 4s)")
 	spoil := flag.Bool("spoiler", false, "mostrar o payload decifrado inteiro, inclusive a resposta")
 	limit := flag.Int64("bytes", 64<<10, "máximo de bytes lidos na inspeção por -url")
+	songlessToday := flag.Bool("songless-today", false, "Songless: mostra data + fileUrls do dia")
+	songlessSearch := flag.String("songless-search", "", "Songless: busca o texto na API")
+	songlessGuess := flag.Bool("songless-guess", false, "Songless: 5 skips na categoria até revelar")
+	songlessPlay := flag.Bool("songless-play", false, "Songless: toca o .aac da categoria até o limite do round")
+	songlessCat := flag.Int("songless-cat", 0, "Songless: categoria 0=All, 1=Rock, 2=Hip Hop")
+	songlessRound := flag.Int("songless-round", 1, "Songless: round 1..5 para o limite de reprodução")
 	flag.Parse()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	if *songlessToday || *songlessSearch != "" || *songlessGuess || *songlessPlay {
+		var err error
+		switch {
+		case *songlessToday:
+			err = probeSonglessToday(ctx)
+		case *songlessSearch != "":
+			err = probeSonglessSearch(ctx, *songlessSearch)
+		case *songlessGuess:
+			err = probeSonglessGuess(ctx, *songlessCat)
+		case *songlessPlay:
+			err = probeSonglessPlay(ctx, *songlessCat, *songlessRound)
+		}
+		if err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
 
 	now := time.Now()
 	n := bandle.PuzzleNumber(now)
@@ -55,9 +89,6 @@ func main() {
 	if *rawURL == "" && *file == "" && *walkEvery == 0 {
 		return
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
 
 	if *walkEvery > 0 {
 		p, err := client.DailyPuzzle(ctx, now)

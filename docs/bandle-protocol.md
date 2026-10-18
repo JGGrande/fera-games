@@ -2,7 +2,7 @@
 
 Status: **completo** em 2026-09-16. Mapeado lendo o bundle da SPA (`/_expo/static/js/web/index-*.js`) e reproduzindo o fluxo com `curl`/`go run ./cmd/probe` contra o puzzle #1491. Faixa 1 e a troca de estágios verificadas com o dispositivo real.
 
-Código que já implementa isto: `internal/games/bandle/protocol.go` (constantes, tipos, `Decrypt`, `EncryptionKey`, `Judge`, `MergeAnswer`) e `cmd/probe` (fluxo HTTP completo). Payloads reais em `testdata/bandle/`.
+Código que já implementa isto: `internal/games/bandle/protocol.go` (constantes, tipos, `Decrypt`, `EncryptionKey`, `Judge`, `MergeAnswer`) e `cmd/probe` (fluxo HTTP completo). Respostas de exemplo em [respostas-api.md](respostas-api.md).
 
 ## 0. Fluxo completo (o que a Fase 2 precisa implementar)
 
@@ -25,7 +25,7 @@ Ordem no jogo: `planning/<dia>.txt` (puzzle) → `guesslist/songs.txt` (catálog
 | Numeração | `N = dias desde 2022-08-17` (#1 = 2022-08-18). 2026-09-16 → payload `id: 1491` = `bandle.PuzzleNumber` | **Confirmado** |
 | Virada do dia | Meia-noite local: a SPA monta o nome do arquivo com `formatDate(new Date())` (data civil local). Se `serverUtc - now > 10 min` e a data do servidor for outra, ela mostra erro | Confirmado |
 | Endpoint do puzzle | `/v2/planning/YYYY-MM-DD.txt` (via URL assinada) | Confirmado |
-| Payload | Array JSON com **1** objeto (ver `testdata/bandle/planning-2026-09-16.json`). Campos: `id`, `day`, `folder`, `path`, `song` ("Artista - Título"), `sources` (artistas), `instruments` (6), `clue{de,en,es,fr}`, `par`, `year`, `view`, `stream`, `bpm`, `genre[]`, `frontperson`, `youtube`, `youtubeStart`, `spotifyId`, `appleMusicId`, `wiki_*`, `minVersion` | Confirmado |
+| Payload | Array JSON com **1** objeto (ver [respostas-api.md](respostas-api.md)). Campos: `id`, `day`, `folder`, `path`, `song` ("Artista - Título"), `sources` (artistas), `instruments` (6), `clue{de,en,es,fr}`, `par`, `year`, `view`, `stream`, `bpm`, `genre[]`, `frontperson`, `youtube`, `youtubeStart`, `spotifyId`, `appleMusicId`, `wiki_*`, `minVersion` | Confirmado |
 | Outros arquivos de planning | `/v2/planning/weekly.txt` (lista da semana), `/v2/planning/onboarding.txt` (tutorial) | Confirmado no bundle, não baixados |
 | Cache | `Cache-Control` ausente no planning; ETag presente. A SPA cacheia o dia em storage local | Confirmado |
 
@@ -63,7 +63,7 @@ Consequência para a Fase 3: não precisa de mixer; basta um player com "trocar 
   4. Erro ou pulo avança `step`; se `step == len(instruments)` e errou, derrota.
 - Chamadas opcionais no chute: callback de estatísticas por música (contagem de chutes por `folder/step/id`, não obrigatório) e `POST https://api.nicelight.games/plays/done` só quando existe `nlgid` em `sessionStorage` (integração externa). Nenhuma das duas afeta o jogo.
 - Arquivo auxiliar: `/v2/details/<path>.txt` traz `instruments`, `youtube`, `bpm`, `clue` — só é buscado quando o item da playlist não tem `instruments`. O puzzle diário já vem completo.
-- Bônus (pós-jogo): `/v3/bonus/<path>.txt` → array de `{type, data:{question?, answers:[{id, label, value, count, correct?}]}}`, tipos `photo, frontperson, nationality, trivia1, year1, year2, album, tempo, instruments` (ver `testdata/bandle/bonus-*.json`). Fora do escopo da PoC.
+- Bônus (pós-jogo): `/v3/bonus/<path>.txt` → array de `{type, data:{question?, answers:[{id, label, value, count, correct?}]}}`, tipos `photo, frontperson, nationality, trivia1, year1, year2, album, tempo, instruments` (ver [respostas-api.md](respostas-api.md)). Fora do escopo da PoC.
 
 ## 5. Backend, auth e limites
 

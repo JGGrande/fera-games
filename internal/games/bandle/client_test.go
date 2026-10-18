@@ -16,7 +16,7 @@ import (
 	"fera-games/internal/httpx"
 )
 
-// encrypt é o inverso de Decrypt (a cifra é simétrica), para servir testdata cifrado.
+// encrypt é o inverso de Decrypt (a cifra é simétrica), para servir as fixtures cifradas.
 func encrypt(key string, plain []byte) string {
 	var mask byte
 	for i := 0; i < len(key); i++ {
@@ -113,7 +113,7 @@ func TestClientFullFlow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(cat) != 2576 {
+	if len(cat) != 10 {
 		t.Fatalf("catálogo com %d itens", len(cat))
 	}
 	rc, err := c.Stem(ctx, p, 1)

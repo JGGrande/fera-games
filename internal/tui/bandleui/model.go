@@ -21,6 +21,7 @@ import (
 	"fera-games/internal/game"
 	"fera-games/internal/games/bandle"
 	"fera-games/internal/store"
+	"fera-games/internal/tui/clip"
 )
 
 // Deps é o que a tela precisa de fora.
@@ -266,7 +267,7 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 		m.deps.Player.Seek(seekStep)
 	case m.phase == phaseFinished && key.Matches(msg, m.keys.Copy):
 		m.copied = true
-		return m, tea.SetClipboard(m.shareText())
+		return m, clip.Copy(m.shareText())
 	case m.phase == phasePlaying && key.Matches(msg, m.keys.Skip):
 		return m.apply(m.session.Skip(context.Background()))
 	case m.phase == phasePlaying && key.Matches(msg, m.keys.Type):

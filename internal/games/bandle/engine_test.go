@@ -14,7 +14,7 @@ import (
 	"fera-games/internal/game"
 )
 
-// fakeProvider serve os payloads reais de testdata/ sem rede.
+// fakeProvider serve as fixtures sem rede.
 type fakeProvider struct {
 	puzzle  Puzzle
 	catalog Catalog

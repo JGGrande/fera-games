@@ -1,10 +1,10 @@
 // Command harscan lê um HAR exportado do DevTools jogando o Bandle e gera:
 //   - um relatório markdown com endpoints, headers e formatos (rascunho do protocolo);
-//   - os corpos JSON salvos em testdata/ para testes com httptest.
+//   - os corpos JSON salvos em disco para testes com httptest.
 //
 // Uso:
 //
-//	go run ./cmd/harscan -har bandle.har -out testdata/bandle -report docs/bandle-har-report.md
+//	go run ./cmd/harscan -har bandle.har -out out -report docs/bandle-har-report.md
 package main
 
 import (
@@ -24,7 +24,7 @@ import (
 
 func main() {
 	harPath := flag.String("har", "", "arquivo .har exportado do DevTools (obrigatório)")
-	outDir := flag.String("out", "testdata/bandle", "pasta para salvar os corpos JSON")
+	outDir := flag.String("out", "out", "pasta para salvar os corpos JSON")
 	report := flag.String("report", "docs/bandle-har-report.md", "relatório markdown gerado")
 	flag.Parse()
 	if *harPath == "" {
