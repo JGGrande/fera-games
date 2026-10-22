@@ -33,8 +33,29 @@ ifeq ($(shell uname -s),Linux)
 	}
 endif
 
+.PHONY: check-clipboard
+check-clipboard: ## garante a existência do xclip (Linux) 
+ifeq ($(shell uname -s),Linux)
+	@pkg-config --exists xclip || { \
+		echo "==> xclip não encontrado."; \
+		if command -v apt-get >/dev/null 2>&1; then \
+			echo "==> instalando via apt-get (vai pedir senha do sudo)..."; \
+			sudo apt-get update && sudo apt-get install -y xclip; \
+		else \
+			echo "Instale o pacote de desenvolvimento do xclip para sua distro e rode 'make run' de novo."; \
+			exit 1; \
+		fi; \
+	}
+endif
+
+deps:
+	@echo "Verificando deps de áudio"
+	@$(MAKE) check-audio-deps
+	@echo "Verificando deps de área de transferência"
+	@$(MAKE) check-clipboard
+
 .PHONY: run
-run: check-audio-deps ## abre o menu (go run ./cmd/fera)
+run: ## abre o menu (go run ./cmd/fera)
 	$(GO) run ./cmd/fera $(ARGS)
 
 .PHONY: build
