@@ -13,6 +13,8 @@ import (
 	"fera-games/internal/audio"
 	"fera-games/internal/games/bandle"
 	"fera-games/internal/games/bandle/bandletest"
+	"fera-games/internal/games/conexo"
+	"fera-games/internal/games/conexo/conexotest"
 	"fera-games/internal/games/songless"
 	"fera-games/internal/games/songless/songlesstest"
 	"fera-games/internal/tui/menu"
@@ -58,6 +60,8 @@ func fakeDeps(t *testing.T) Deps {
 	return Deps{
 		Bandle:     bandle.NewGame(bandletest.New(t)),
 		Songless:   songless.NewGame(songlesstest.New(t)),
+		Conexo:     conexo.NewGame(conexotest.New(t), "pt"),
+		Now:        func() time.Time { return time.Date(2026, 10, 22, 12, 0, 0, 0, time.Local) },
 		OpenPlayer: func() (audio.Player, error) { return audio.NewSilent(), nil },
 	}
 }
@@ -154,4 +158,39 @@ func TestDownOpensSonglessAndQReturns(t *testing.T) {
 		t.Fatal("tela do Songless não foi criada")
 	}
 	_ = menu.SelectedMsg{}
+}
+
+// TestConexoOpensAndQReturns cobre o roteamento menu ↔ Conexo, retomando a
+// partida ao voltar.
+func TestConexoOpensAndQReturns(t *testing.T) {
+	var cur tea.Model = NewWith(Config{}, fakeDeps(t))
+	cur, _ = cur.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
+
+	// Bandle=0, Termo=1, Songless=2, Conexo=3.
+	for range 3 {
+		cur, _ = cur.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	}
+	cur, cmd := cur.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	cur, cmd = cur.Update(cmd())
+	if cur.(Model).screen != screenConexo {
+		t.Fatalf("SelectedMsg não abriu o Conexo (screen=%d)", cur.(Model).screen)
+	}
+	for _, msg := range drain(cmd) {
+		cur, _ = cur.Update(msg)
+	}
+	if v := ansi.Strip(cur.View().Content); !strings.Contains(v, "CONEXO #1117") || !strings.Contains(v, "MANILHA") {
+		t.Fatalf("tabuleiro não carregou:\n%s", v)
+	}
+	cur, _ = cur.Update(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
+
+	cur, cmd = cur.Update(tea.KeyPressMsg{Code: 'q', Text: "q"})
+	cur, _ = cur.Update(cmd())
+	if cur.(Model).screen != screenMenu {
+		t.Fatal("BackMsg não voltou ao menu")
+	}
+	cur, cmd = cur.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	cur, _ = cur.Update(cmd())
+	if s := cur.(Model).conexo.Session(); s == nil || s.Items()[1] != "manilha" {
+		t.Fatal("retomar deveria manter a partida em memória")
+	}
 }

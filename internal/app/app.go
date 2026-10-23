@@ -11,10 +11,12 @@ import (
 	"fera-games/internal/audio"
 	"fera-games/internal/game"
 	"fera-games/internal/games/bandle"
+	"fera-games/internal/games/conexo"
 	"fera-games/internal/games/songless"
 	"fera-games/internal/httpx"
 	"fera-games/internal/store"
 	"fera-games/internal/tui/bandleui"
+	"fera-games/internal/tui/conexoui"
 	"fera-games/internal/tui/menu"
 	"fera-games/internal/tui/songlessui"
 	"fera-games/internal/tui/theme"
@@ -25,15 +27,19 @@ var Games = []game.Info{
 	{ID: "bandle", Name: "Bandle", Description: "adivinhe a música ouvindo um instrumento por vez", Available: true},
 	{ID: "termo", Name: "Termo", Description: "a palavra do dia em 6 tentativas"},
 	{ID: "songless", Name: "Songless", Description: "adivinhe a música pelo trecho", Available: true},
+	{ID: "conexo", Name: "Conexo", Description: "junte as 16 palavras em 4 grupos", Available: true},
 }
 
 // Deps são as dependências externas, injetáveis nos testes.
 type Deps struct {
-	Bandle     *bandle.Game
-	Songless   *songless.Game
-	OpenPlayer func() (audio.Player, error)
-	Now        func() time.Time
-	Store      *store.Store // nil = não persiste
+	Bandle   *bandle.Game
+	Songless *songless.Game
+	Conexo   *conexo.Game
+	// ConexoTokens guarda o token do App Check colado na tela do Conexo.
+	ConexoTokens *conexo.TokenStore
+	OpenPlayer   func() (audio.Player, error)
+	Now          func() time.Time
+	Store        *store.Store // nil = não persiste
 }
 
 // DefaultDeps monta as dependências reais a partir da configuração.
@@ -50,10 +56,17 @@ func DefaultDeps(cfg Config) Deps {
 		open = func() (audio.Player, error) { return audio.NewSilent(), nil }
 	}
 	var st *store.Store
+	tokens := &conexo.TokenStore{}
 	if cfg.DataDir != "" {
 		st = &store.Store{Dir: cfg.DataDir}
+		tokens.Path = filepath.Join(cfg.DataDir, "conexo-appcheck.jwt")
 	}
-	return Deps{Bandle: bandle.NewGame(bandleClient), Songless: songless.NewGame(songlessClient), OpenPlayer: open, Now: time.Now, Store: st}
+	conexoClient := conexo.NewClient(http, cache, tokens)
+	return Deps{
+		Bandle: bandle.NewGame(bandleClient), Songless: songless.NewGame(songlessClient),
+		Conexo: conexo.NewGame(conexoClient, "pt"), ConexoTokens: tokens,
+		OpenPlayer: open, Now: time.Now, Store: st,
+	}
 }
 
 type screen int
@@ -62,6 +75,7 @@ const (
 	screenMenu screen = iota
 	screenBandle
 	screenSongless
+	screenConexo
 )
 
 // Model é o estado raiz.
@@ -72,6 +86,7 @@ type Model struct {
 	menu        menu.Model
 	bandle      *bandleui.Model
 	songless    *songlessui.Model
+	conexo      *conexoui.Model
 	player      audio.Player
 	audioNotice string
 	width       int
@@ -105,6 +120,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			s, _ := m.songless.Update(msg)
 			m.songless = &s
 		}
+		if m.conexo != nil {
+			c, _ := m.conexo.Update(msg)
+			m.conexo = &c
+		}
 		return m, nil
 	case menu.SelectedMsg:
 		if msg.ID == "bandle" {
@@ -113,11 +132,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.ID == "songless" {
 			return m.openSongless()
 		}
+		if msg.ID == "conexo" {
+			return m.openConexo()
+		}
 		return m, nil
 	case bandleui.BackMsg:
 		m.screen = screenMenu
 		return m, nil
 	case songlessui.BackMsg:
+		m.screen = screenMenu
+		return m, nil
+	case conexoui.BackMsg:
 		m.screen = screenMenu
 		return m, nil
 	}
@@ -132,6 +157,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case screenSongless:
 		s, c := m.songless.Update(msg)
 		m.songless, cmd = &s, c
+	case screenConexo:
+		c, next := m.conexo.Update(msg)
+		m.conexo, cmd = &c, next
 	}
 	return m, cmd
 }
@@ -171,6 +199,22 @@ func (m Model) openSongless() (tea.Model, tea.Cmd) {
 	return m, s.Init()
 }
 
+// openConexo abre (ou retoma) a tela do Conexo; não usa áudio.
+func (m Model) openConexo() (tea.Model, tea.Cmd) {
+	m.screen = screenConexo
+	if m.conexo != nil {
+		return m, m.conexo.Resume()
+	}
+	c := conexoui.New(conexoui.Deps{
+		Game: m.deps.Conexo, Tokens: m.deps.ConexoTokens, Now: m.deps.Now, Store: m.deps.Store,
+	})
+	if m.width > 0 {
+		c, _ = c.Update(tea.WindowSizeMsg{Width: m.width, Height: m.height})
+	}
+	m.conexo = &c
+	return m, c.Init()
+}
+
 // ensurePlayer abre o dispositivo uma vez; devolve o aviso para a tela.
 func (m *Model) ensurePlayer() string {
 	if m.player != nil {
@@ -195,6 +239,8 @@ func (m Model) View() tea.View {
 		content = m.bandle.View()
 	case m.screen == screenSongless && m.songless != nil:
 		content = m.songless.View()
+	case m.screen == screenConexo && m.conexo != nil:
+		content = m.conexo.View()
 	default:
 		content = m.menu.View()
 	}
