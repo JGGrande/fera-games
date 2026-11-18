@@ -48,11 +48,34 @@ ifeq ($(shell uname -s),Linux)
 	}
 endif
 
+# O Fera Músicas baixa o áudio do YouTube no cliente com yt-dlp + ffmpeg. Este
+# alvo só confere e imprime como instalar; nunca roda sudo. Não falha: sem as
+# ferramentas o jogo abre e o cadastro funciona, só o áudio fica indisponível.
+.PHONY: check-media-deps
+check-media-deps: ## confere yt-dlp e ffmpeg (Fera Músicas); só avisa, não instala
+	@missing=""; \
+	for t in yt-dlp ffmpeg; do command -v $$t >/dev/null 2>&1 || missing="$$missing $$t"; done; \
+	if [ -z "$$missing" ]; then \
+		echo "==> yt-dlp e ffmpeg encontrados"; \
+	else \
+		echo "==> faltando:$$missing (o Fera Músicas precisa deles para baixar o áudio)"; \
+		case "$$(uname -s)" in \
+			Linux) \
+				echo "    ffmpeg:  sudo apt-get install -y ffmpeg"; \
+				echo "    yt-dlp:  pipx install yt-dlp   (o pacote do apt costuma estar velho e quebrar com o YouTube)";; \
+			Darwin) echo "    brew install yt-dlp ffmpeg";; \
+			*) echo "    winget install yt-dlp.yt-dlp Gyan.FFmpeg";; \
+		esac; \
+		echo "    se o download falhar depois, atualize: yt-dlp -U"; \
+	fi
+
 deps:
 	@echo "Verificando deps de áudio"
 	@$(MAKE) check-audio-deps
 	@echo "Verificando deps de área de transferência"
 	@$(MAKE) check-clipboard
+	@echo "Verificando deps de download (Fera Músicas)"
+	@$(MAKE) check-media-deps
 
 .PHONY: run
 run: ## abre o menu (go run ./cmd/fera)
@@ -103,6 +126,11 @@ play: check-audio-deps ## toca a faixa 1 de hoje
 .PHONY: walk
 walk: check-audio-deps ## toca os estágios 1..5 de hoje trocando a cada 4 s (teste de ouvido da Fase 3)
 	$(GO) run ./cmd/probe -walk 4s
+
+.PHONY: musicas-probe
+musicas-probe: ## baixa o trecho de um link do YouTube (URL=https://youtu.be/... PROBE_ARGS="-yt-start 1:30 -yt-play")
+	@test -n "$(URL)" || { echo "uso: make musicas-probe URL=https://youtu.be/<id>"; exit 2; }
+	$(GO) run ./cmd/probe -yt "$(URL)" $(PROBE_ARGS)
 
 .PHONY: snapshot
 snapshot: $(GORELEASER) ## binários para todas as plataformas em dist/ (FERA_VERSION=v0.1.0 nomeia a versão)

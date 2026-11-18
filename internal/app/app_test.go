@@ -2,6 +2,7 @@ package app
 
 import (
 	"bytes"
+	"context"
 	"strings"
 	"testing"
 	"time"
@@ -15,6 +16,8 @@ import (
 	"fera-games/internal/games/bandle/bandletest"
 	"fera-games/internal/games/conexo"
 	"fera-games/internal/games/conexo/conexotest"
+	"fera-games/internal/games/feramusicas"
+	"fera-games/internal/games/feramusicas/feramusicastest"
 	"fera-games/internal/games/songless"
 	"fera-games/internal/games/songless/songlesstest"
 	"fera-games/internal/tui/menu"
@@ -58,11 +61,12 @@ func TestMenuFitsMinimumSize(t *testing.T) {
 
 func fakeDeps(t *testing.T) Deps {
 	return Deps{
-		Bandle:     bandle.NewGame(bandletest.New(t)),
-		Songless:   songless.NewGame(songlesstest.New(t)),
-		Conexo:     conexo.NewGame(conexotest.New(t), "pt"),
-		Now:        func() time.Time { return time.Date(2026, 10, 22, 12, 0, 0, 0, time.Local) },
-		OpenPlayer: func() (audio.Player, error) { return audio.NewSilent(), nil },
+		Bandle:      bandle.NewGame(bandletest.New(t)),
+		Songless:    songless.NewGame(songlesstest.New(t)),
+		Conexo:      conexo.NewGame(conexotest.New(t), "pt"),
+		FeraMusicas: feramusicas.NewGame(feramusicastest.NewCatalog(t), &feramusicastest.Source{Seconds: 1}),
+		Now:         func() time.Time { return time.Date(2026, 10, 22, 12, 0, 0, 0, time.Local) },
+		OpenPlayer:  func() (audio.Player, error) { return audio.NewSilent(), nil },
 	}
 }
 
@@ -192,5 +196,142 @@ func TestConexoOpensAndQReturns(t *testing.T) {
 	cur, _ = cur.Update(cmd())
 	if s := cur.(Model).conexo.Session(); s == nil || s.Items()[1] != "manilha" {
 		t.Fatal("retomar deveria manter a partida em memória")
+	}
+}
+
+// settleApp roda cmd e, em cadeia, os comandos que cada mensagem gera
+// (descartando o que demora: ticks e spinners).
+func settleApp(cur tea.Model, cmd tea.Cmd) tea.Model {
+	pending := []tea.Cmd{cmd}
+	for round := 0; round < 10 && len(pending) > 0; round++ {
+		var next []tea.Cmd
+		for _, c := range pending {
+			for _, msg := range drain(c) {
+				var n tea.Cmd
+				cur, n = cur.Update(msg)
+				next = append(next, n)
+			}
+		}
+		pending = next
+	}
+	return cur
+}
+
+// TestFeraMusicasOpensAndQReturns cobre o roteamento menu ↔ Fera Músicas,
+// retomando a mesma partida ao voltar.
+func TestFeraMusicasOpensAndQReturns(t *testing.T) {
+	var cur tea.Model = NewWith(Config{}, fakeDeps(t))
+	cur, _ = cur.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
+
+	// Bandle=0, Termo=1, Songless=2, Conexo=3, Fera Músicas=4.
+	for range 4 {
+		cur, _ = cur.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	}
+	if v := ansi.Strip(cur.View().Content); !strings.Contains(v, "Fera Músicas") {
+		t.Fatalf("o menu deveria listar o Fera Músicas:\n%s", v)
+	}
+	cur, cmd := cur.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	cur, cmd = cur.Update(cmd())
+	if cur.(Model).screen != screenFeraMusicas || cur.(Model).feraMusicas == nil {
+		t.Fatalf("SelectedMsg não abriu o Fera Músicas (screen=%d)", cur.(Model).screen)
+	}
+	// Catálogo → sessão → áudio chegam em mensagens encadeadas.
+	cur = settleApp(cur, cmd)
+	if v := ansi.Strip(cur.View().Content); !strings.Contains(v, "Fera Músicas") {
+		t.Fatalf("tela do Fera Músicas:\n%s", v)
+	}
+
+	first := cur.(Model).feraMusicas.Session()
+	if first == nil {
+		t.Fatal("a partida deveria ter sido aberta")
+	}
+	cur, cmd = cur.Update(tea.KeyPressMsg{Code: 'q', Text: "q"})
+	cur, _ = cur.Update(cmd())
+	if cur.(Model).screen != screenMenu {
+		t.Fatal("BackMsg não voltou ao menu")
+	}
+	cur, cmd = cur.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	cur, _ = cur.Update(cmd())
+	if cur.(Model).feraMusicas.Session() != first {
+		t.Fatal("retomar deveria manter a mesma partida em memória")
+	}
+}
+
+// TestFeraMusicasSemJogoNaoQuebra: sem a dependência (ex.: testes antigos), a
+// entrada do menu simplesmente não abre nada.
+func TestFeraMusicasSemJogoNaoQuebra(t *testing.T) {
+	deps := fakeDeps(t)
+	deps.FeraMusicas = nil
+	var cur tea.Model = NewWith(Config{}, deps)
+	cur, _ = cur.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
+	cur, _ = cur.Update(menu.SelectedMsg{ID: feramusicas.GameID})
+	if cur.(Model).screen != screenMenu {
+		t.Fatalf("screen = %d, deveria continuar no menu", cur.(Model).screen)
+	}
+}
+
+// TestAdminCadastraEOJogoVe cobre a tecla a do menu: o Admin abre, cadastra
+// uma música, e o jogo (que divide o catálogo com ele) já a usa.
+func TestAdminCadastraEOJogoVe(t *testing.T) {
+	deps := fakeDeps(t)
+	deps.FeraMusicas = feramusicas.NewGame(feramusicas.NewMemoryCatalog(), &feramusicastest.Source{Seconds: 1})
+	var cur tea.Model = NewWith(Config{}, deps)
+	cur, _ = cur.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
+	if v := ansi.Strip(cur.View().Content); !strings.Contains(v, "a admin") {
+		t.Fatalf("o menu deveria mostrar a tecla a:\n%s", v)
+	}
+
+	cur, cmd := cur.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
+	cur, cmd = cur.Update(cmd())
+	if cur.(Model).screen != screenAdmin || cur.(Model).admin == nil {
+		t.Fatalf("a não abriu o Admin (screen=%d)", cur.(Model).screen)
+	}
+	cur = settleApp(cur, cmd)
+	if v := ansi.Strip(cur.View().Content); !strings.Contains(v, "Admin") || !strings.Contains(v, "Nenhuma música") {
+		t.Fatalf("tela do Admin:\n%s", v)
+	}
+
+	// Cadastra pelo Admin (o formulário é testado no pacote dele; aqui basta o catálogo).
+	_, err := deps.FeraMusicas.Catalog().Add(context.Background(), feramusicas.Song{
+		Name: "Queen - Bohemian Rhapsody", Category: "Rock", URL: "https://youtu.be/fJ9rUzIMcZQ",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cur, cmd = cur.Update(tea.KeyPressMsg{Code: 'q', Text: "q"})
+	cur, _ = cur.Update(cmd())
+	if cur.(Model).screen != screenMenu {
+		t.Fatal("q no Admin deveria voltar ao menu")
+	}
+
+	// Abre o jogo: a música cadastrada já é a do dia em Rock.
+	for range 4 {
+		cur, _ = cur.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	}
+	cur, cmd = cur.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	cur, cmd = cur.Update(cmd())
+	cur = settleApp(cur, cmd)
+	if s := cur.(Model).feraMusicas.Session(); s == nil || s.Category() != "Rock" {
+		t.Fatalf("o jogo deveria abrir em Rock com a música cadastrada no Admin")
+	}
+
+	// Voltar ao Admin recarrega a lista.
+	cur, cmd = cur.Update(tea.KeyPressMsg{Code: 'q', Text: "q"})
+	cur, _ = cur.Update(cmd())
+	cur, cmd = cur.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
+	cur, cmd = cur.Update(cmd())
+	cur = settleApp(cur, cmd)
+	if v := ansi.Strip(cur.View().Content); !strings.Contains(v, "músicas cadastradas (1)") || !strings.Contains(v, "Queen - Bohemian Rhapsody") {
+		t.Fatalf("o Admin deveria listar a música cadastrada:\n%s", v)
+	}
+}
+
+func TestAdminSemJogoNaoQuebra(t *testing.T) {
+	deps := fakeDeps(t)
+	deps.FeraMusicas = nil
+	var cur tea.Model = NewWith(Config{}, deps)
+	cur, _ = cur.Update(menu.AdminMsg{})
+	if cur.(Model).screen != screenMenu {
+		t.Fatalf("screen = %d, deveria continuar no menu", cur.(Model).screen)
 	}
 }

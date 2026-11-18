@@ -25,6 +25,7 @@ const maxTrackBytes = 32 << 20
 // Manter tudo em memória torna seek e troca de faixa instantâneos.
 type Track struct {
 	buf *beep.Buffer
+	end int // amostras visíveis; 0 = o buffer inteiro (ver Head)
 }
 
 // Decode lê um mp3 inteiro de r e o decodifica.
@@ -58,13 +59,30 @@ func Decode(r io.Reader) (*Track, error) {
 }
 
 // Duration é a duração total do clipe.
-func (t *Track) Duration() time.Duration { return Rate.D(t.buf.Len()) }
+func (t *Track) Duration() time.Duration { return Rate.D(t.Samples()) }
 
 // Samples é o tamanho em amostras.
-func (t *Track) Samples() int { return t.buf.Len() }
+func (t *Track) Samples() int {
+	if t.end > 0 {
+		return t.end
+	}
+	return t.buf.Len()
+}
+
+// Head devolve só os primeiros d do clipe, sem copiar o áudio. O player para
+// sozinho no último sample, então o corte é exato: não depende do tick da
+// tela nem do buffer do dispositivo (que, com Pause, ainda tocaria o que já
+// estava enfileirado). d além da duração devolve o clipe inteiro.
+func (t *Track) Head(d time.Duration) *Track {
+	n := Rate.N(d)
+	if n <= 0 || n >= t.Samples() {
+		return t
+	}
+	return &Track{buf: t.buf, end: n}
+}
 
 // streamer devolve um leitor posicionável sobre o clipe inteiro.
-func (t *Track) streamer() beep.StreamSeeker { return t.buf.Streamer(0, t.buf.Len()) }
+func (t *Track) streamer() beep.StreamSeeker { return t.buf.Streamer(0, t.Samples()) }
 
 // readSeekCloser dá Close a um bytes.Reader sem esconder o Seek, que o
 // decoder precisa para saber o tamanho.

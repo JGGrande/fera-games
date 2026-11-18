@@ -3,6 +3,7 @@
 package app
 
 import (
+	"os"
 	"path/filepath"
 	"time"
 
@@ -12,11 +13,14 @@ import (
 	"fera-games/internal/game"
 	"fera-games/internal/games/bandle"
 	"fera-games/internal/games/conexo"
+	"fera-games/internal/games/feramusicas"
 	"fera-games/internal/games/songless"
 	"fera-games/internal/httpx"
 	"fera-games/internal/store"
 	"fera-games/internal/tui/bandleui"
 	"fera-games/internal/tui/conexoui"
+	"fera-games/internal/tui/feramusicasadmin"
+	"fera-games/internal/tui/feramusicasui"
 	"fera-games/internal/tui/menu"
 	"fera-games/internal/tui/songlessui"
 	"fera-games/internal/tui/theme"
@@ -28,6 +32,7 @@ var Games = []game.Info{
 	{ID: "termo", Name: "Termo", Description: "a palavra do dia em 6 tentativas"},
 	{ID: "songless", Name: "Songless", Description: "adivinhe a música pelo trecho", Available: true},
 	{ID: "conexo", Name: "Conexo", Description: "junte as 16 palavras em 4 grupos", Available: true},
+	{ID: feramusicas.GameID, Name: feramusicas.GameName, Description: "adivinhe a música pelo trecho — catálogo próprio", Available: true},
 }
 
 // Deps são as dependências externas, injetáveis nos testes.
@@ -35,6 +40,11 @@ type Deps struct {
 	Bandle   *bandle.Game
 	Songless *songless.Game
 	Conexo   *conexo.Game
+	// FeraMusicas toca músicas do catálogo cadastrado, baixadas do YouTube.
+	FeraMusicas *feramusicas.Game
+	// FeraMusicasNotice avisa na tela do catálogo de onde ele vem (ex.: só em
+	// memória porque o Firebase não foi configurado).
+	FeraMusicasNotice string
 	// ConexoTokens guarda o token do App Check colado na tela do Conexo.
 	ConexoTokens *conexo.TokenStore
 	OpenPlayer   func() (audio.Player, error)
@@ -62,9 +72,19 @@ func DefaultDeps(cfg Config) Deps {
 		tokens.Path = filepath.Join(cfg.DataDir, "conexo-appcheck.jwt")
 	}
 	conexoClient := conexo.NewClient(http, cache, tokens)
+	// Sem yt-dlp/ffmpeg o jogo abre assim mesmo: o cadastro funciona e cada
+	// download explica o que falta instalar.
+	var source feramusicas.AudioSource
+	if ytdlp, err := feramusicas.NewYTDLP(); err != nil {
+		source = feramusicas.UnavailableSource(err)
+	} else {
+		source = ytdlp
+	}
+	catalog, catalogNotice := feraMusicasCatalog(os.Getenv)
 	return Deps{
 		Bandle: bandle.NewGame(bandleClient), Songless: songless.NewGame(songlessClient),
 		Conexo: conexo.NewGame(conexoClient, "pt"), ConexoTokens: tokens,
+		FeraMusicas: feramusicas.NewGame(catalog, source), FeraMusicasNotice: catalogNotice,
 		OpenPlayer: open, Now: time.Now, Store: st,
 	}
 }
@@ -76,6 +96,8 @@ const (
 	screenBandle
 	screenSongless
 	screenConexo
+	screenFeraMusicas
+	screenAdmin
 )
 
 // Model é o estado raiz.
@@ -87,6 +109,8 @@ type Model struct {
 	bandle      *bandleui.Model
 	songless    *songlessui.Model
 	conexo      *conexoui.Model
+	feraMusicas *feramusicasui.Model
+	admin       *feramusicasadmin.Model
 	player      audio.Player
 	audioNotice string
 	width       int
@@ -124,6 +148,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			c, _ := m.conexo.Update(msg)
 			m.conexo = &c
 		}
+		if m.feraMusicas != nil {
+			f, _ := m.feraMusicas.Update(msg)
+			m.feraMusicas = &f
+		}
+		if m.admin != nil {
+			a, _ := m.admin.Update(msg)
+			m.admin = &a
+		}
+		return m, nil
+	case menu.AdminMsg:
+		if m.deps.FeraMusicas != nil {
+			return m.openAdmin()
+		}
 		return m, nil
 	case menu.SelectedMsg:
 		if msg.ID == "bandle" {
@@ -135,6 +172,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.ID == "conexo" {
 			return m.openConexo()
 		}
+		if msg.ID == feramusicas.GameID && m.deps.FeraMusicas != nil {
+			return m.openFeraMusicas()
+		}
 		return m, nil
 	case bandleui.BackMsg:
 		m.screen = screenMenu
@@ -143,6 +183,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.screen = screenMenu
 		return m, nil
 	case conexoui.BackMsg:
+		m.screen = screenMenu
+		return m, nil
+	case feramusicasui.BackMsg:
+		m.screen = screenMenu
+		return m, nil
+	case feramusicasadmin.BackMsg:
 		m.screen = screenMenu
 		return m, nil
 	}
@@ -160,6 +206,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case screenConexo:
 		c, next := m.conexo.Update(msg)
 		m.conexo, cmd = &c, next
+	case screenFeraMusicas:
+		f, c := m.feraMusicas.Update(msg)
+		m.feraMusicas, cmd = &f, c
+	case screenAdmin:
+		a, c := m.admin.Update(msg)
+		m.admin, cmd = &a, c
 	}
 	return m, cmd
 }
@@ -197,6 +249,49 @@ func (m Model) openSongless() (tea.Model, tea.Cmd) {
 	}
 	m.songless = &s
 	return m, s.Init()
+}
+
+// openAdmin abre (ou retoma, recarregando) o menu administrativo do Fera
+// Músicas. Ele divide o catálogo com o jogo, que recarrega ao ser retomado.
+func (m Model) openAdmin() (tea.Model, tea.Cmd) {
+	m.screen = screenAdmin
+	if m.admin != nil {
+		return m, m.admin.Resume()
+	}
+	// Player próprio para a prévia do cadastro: o speaker mistura os dois, e a
+	// prévia não troca a faixa que o jogo deixou carregada.
+	player, err := m.deps.OpenPlayer()
+	audioNotice := ""
+	if err != nil {
+		player, audioNotice = audio.NewSilent(), "sem áudio: "+err.Error()
+	}
+	a := feramusicasadmin.New(feramusicasadmin.Deps{
+		Game: m.deps.FeraMusicas, Now: m.deps.Now, CatalogNotice: m.deps.FeraMusicasNotice,
+		Player: player, AudioNotice: audioNotice,
+	})
+	if m.width > 0 {
+		a, _ = a.Update(tea.WindowSizeMsg{Width: m.width, Height: m.height})
+	}
+	m.admin = &a
+	return m, a.Init()
+}
+
+// openFeraMusicas abre (ou retoma) a tela do Fera Músicas, espelhando openSongless.
+func (m Model) openFeraMusicas() (tea.Model, tea.Cmd) {
+	m.screen = screenFeraMusicas
+	if m.feraMusicas != nil {
+		return m, m.feraMusicas.Resume()
+	}
+	notice := m.ensurePlayer()
+	f := feramusicasui.New(feramusicasui.Deps{
+		Game: m.deps.FeraMusicas, Player: m.player, Now: m.deps.Now, AudioNotice: notice,
+		CatalogNotice: m.deps.FeraMusicasNotice,
+	})
+	if m.width > 0 {
+		f, _ = f.Update(tea.WindowSizeMsg{Width: m.width, Height: m.height})
+	}
+	m.feraMusicas = &f
+	return m, f.Init()
 }
 
 // openConexo abre (ou retoma) a tela do Conexo; não usa áudio.
@@ -241,6 +336,10 @@ func (m Model) View() tea.View {
 		content = m.songless.View()
 	case m.screen == screenConexo && m.conexo != nil:
 		content = m.conexo.View()
+	case m.screen == screenFeraMusicas && m.feraMusicas != nil:
+		content = m.feraMusicas.View()
+	case m.screen == screenAdmin && m.admin != nil:
+		content = m.admin.View()
 	default:
 		content = m.menu.View()
 	}

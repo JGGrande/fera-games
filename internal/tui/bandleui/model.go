@@ -6,7 +6,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"sort"
 	"strings"
 	"time"
 
@@ -15,13 +14,13 @@ import (
 	"charm.land/bubbles/v2/spinner"
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
-	"github.com/sahilm/fuzzy"
 
 	"fera-games/internal/audio"
 	"fera-games/internal/game"
 	"fera-games/internal/games/bandle"
 	"fera-games/internal/store"
 	"fera-games/internal/tui/clip"
+	"fera-games/internal/tui/suggest"
 )
 
 // Deps é o que a tela precisa de fora.
@@ -417,37 +416,8 @@ func (m *Model) refreshMatches() {
 		m.matches, m.sel = nil, 0
 		return
 	}
-	m.matches = suggest(q, m.session.Catalog().Titles(), maxMatches)
+	m.matches = suggest.Match(q, m.session.Catalog().Titles(), maxMatches)
 	if m.sel >= len(m.matches) {
 		m.sel = 0
 	}
-}
-
-// suggest ordena: primeiro quem contém o texto literalmente (o mais curto
-// antes, que costuma ser o mais específico), depois o fuzzy para completar.
-func suggest(q string, titles []string, limit int) []string {
-	lq := strings.ToLower(q)
-	var exact []string
-	for _, t := range titles {
-		if strings.Contains(strings.ToLower(t), lq) {
-			exact = append(exact, t)
-		}
-	}
-	sort.SliceStable(exact, func(i, j int) bool { return len(exact[i]) < len(exact[j]) })
-	out := exact[:min(len(exact), limit)]
-	if len(out) < limit {
-		seen := make(map[string]bool, len(out))
-		for _, t := range out {
-			seen[t] = true
-		}
-		for _, f := range fuzzy.Find(q, titles) {
-			if len(out) >= limit {
-				break
-			}
-			if !seen[f.Str] {
-				out = append(out, f.Str)
-			}
-		}
-	}
-	return out
 }

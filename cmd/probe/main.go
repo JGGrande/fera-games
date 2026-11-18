@@ -13,6 +13,13 @@
 //	go run ./cmd/probe -songless-guess -songless-cat 1 # 5 skips até revelar
 //	go run ./cmd/probe -songless-play -songless-cat 0 -songless-round 1
 //
+// E o Fera Músicas (yt-dlp + ffmpeg no PATH): baixa o começo de um vídeo do
+// YouTube, mede o tempo e, com -yt-play, toca os 5 rounds cortando em cada limite:
+//
+//	go run ./cmd/probe -yt https://youtu.be/fJ9rUzIMcZQ
+//	go run ./cmd/probe -yt https://youtu.be/fJ9rUzIMcZQ -yt-play
+//	go run ./cmd/probe -yt https://youtu.be/fJ9rUzIMcZQ -yt-start 1:30 -yt-play
+//
 // Uso (Bandle):
 //
 //	go run ./cmd/probe                                  # número do puzzle de hoje
@@ -60,10 +67,20 @@ func main() {
 	songlessPlay := flag.Bool("songless-play", false, "Songless: toca o .aac da categoria até o limite do round")
 	songlessCat := flag.Int("songless-cat", 0, "Songless: categoria 0=All, 1=Rock, 2=Hip Hop")
 	songlessRound := flag.Int("songless-round", 1, "Songless: round 1..5 para o limite de reprodução")
+	ytURL := flag.String("yt", "", "Fera Músicas: link do YouTube a baixar (precisa de yt-dlp e ffmpeg)")
+	ytPlay := flag.Bool("yt-play", false, "Fera Músicas: toca os 5 rounds, cortando em cada limite")
+	ytStart := flag.String("yt-start", "", "Fera Músicas: de onde o trecho começa (45 ou 1:30)")
 	flag.Parse()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
+
+	if *ytURL != "" {
+		if err := probeYT(ctx, *ytURL, *ytStart, *ytPlay); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
 
 	if *songlessToday || *songlessSearch != "" || *songlessGuess || *songlessPlay {
 		var err error

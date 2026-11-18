@@ -28,6 +28,12 @@ func main() {
 	showVersion := flag.Bool("version", false, "mostrar a versão e sair")
 	flag.Parse()
 
+	// Credenciais do Firebase (Fera Músicas) e afins: ./.env e <data-dir>/.env.
+	if _, err := app.LoadEnv(app.EnvFiles(cfg.DataDir)...); err != nil {
+		fmt.Fprintln(os.Stderr, "fera:", err)
+		os.Exit(1)
+	}
+
 	if *showVersion {
 		fmt.Println("fera", version)
 		return

@@ -57,7 +57,12 @@ func DecodeAAC(r io.Reader) (*Track, error) {
 	if len(samples) == 0 {
 		return nil, errors.New("aac sem amostras")
 	}
-	srcRate := beep.SampleRate(info.SampleRate)
+	return trackFromSamples(samples, beep.SampleRate(info.SampleRate))
+}
+
+// trackFromSamples reamostra para a taxa do dispositivo (se preciso) e monta
+// o Track em memória. Compartilhado por DecodeAAC e DecodePCM.
+func trackFromSamples(samples [][2]float64, srcRate beep.SampleRate) (*Track, error) {
 	var src beep.Streamer = &sliceStreamer{samples: samples}
 	if srcRate != Rate {
 		src = beep.Resample(4, srcRate, Rate, src)
@@ -65,7 +70,7 @@ func DecodeAAC(r io.Reader) (*Track, error) {
 	buf := beep.NewBuffer(beep.Format{SampleRate: Rate, NumChannels: 2, Precision: 2})
 	buf.Append(src)
 	if buf.Len() == 0 {
-		return nil, errors.New("aac sem amostras")
+		return nil, errors.New("áudio sem amostras")
 	}
 	return &Track{buf: buf}, nil
 }

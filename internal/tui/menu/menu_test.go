@@ -93,3 +93,18 @@ func TestViewListsGames(t *testing.T) {
 		}
 	}
 }
+
+func TestAAbreOAdmin(t *testing.T) {
+	m := New(items)
+	m, _ = m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
+	_, cmd := press(m, "a")
+	if cmd == nil {
+		t.Fatal("a não gerou comando")
+	}
+	if _, ok := cmd().(AdminMsg); !ok {
+		t.Fatalf("a devolveu %#v, quero AdminMsg", cmd())
+	}
+	if v := m.View(); !strings.Contains(ansi.Strip(v), "a admin") {
+		t.Fatalf("a ajuda do menu deveria mostrar a tecla a:\n%s", v)
+	}
+}

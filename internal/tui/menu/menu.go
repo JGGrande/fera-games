@@ -16,14 +16,20 @@ import (
 // SelectedMsg é emitida quando o jogador confirma um jogo disponível.
 type SelectedMsg struct{ ID string }
 
+// AdminMsg é emitida pela tecla a: abrir o menu administrativo (cadastro de
+// músicas do Fera Músicas).
+type AdminMsg struct{}
+
 // KeyMap são as teclas do menu; implementa help.KeyMap.
 type KeyMap struct {
-	Up, Down, Select, Help, Quit key.Binding
+	Up, Down, Select, Admin, Help, Quit key.Binding
 }
 
-func (k KeyMap) ShortHelp() []key.Binding { return []key.Binding{k.Up, k.Down, k.Select, k.Quit} }
+func (k KeyMap) ShortHelp() []key.Binding {
+	return []key.Binding{k.Up, k.Down, k.Select, k.Admin, k.Quit}
+}
 func (k KeyMap) FullHelp() [][]key.Binding {
-	return [][]key.Binding{{k.Up, k.Down, k.Select}, {k.Help, k.Quit}}
+	return [][]key.Binding{{k.Up, k.Down, k.Select}, {k.Admin, k.Help, k.Quit}}
 }
 
 // DefaultKeyMap segue os atalhos combinados no plano.
@@ -31,6 +37,7 @@ var DefaultKeyMap = KeyMap{
 	Up:     key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "subir")),
 	Down:   key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "descer")),
 	Select: key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "jogar")),
+	Admin:  key.NewBinding(key.WithKeys("a"), key.WithHelp("a", "admin")),
 	Help:   key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "ajuda")),
 	Quit:   key.NewBinding(key.WithKeys("q", "ctrl+c"), key.WithHelp("q", "sair")),
 }
@@ -74,6 +81,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			}
 		case key.Matches(msg, m.keys.Help):
 			m.help.ShowAll = !m.help.ShowAll
+		case key.Matches(msg, m.keys.Admin):
+			return m, func() tea.Msg { return AdminMsg{} }
 		case key.Matches(msg, m.keys.Select):
 			if len(m.items) == 0 {
 				break

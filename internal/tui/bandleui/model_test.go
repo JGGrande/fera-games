@@ -15,6 +15,7 @@ import (
 	"fera-games/internal/games/bandle"
 	"fera-games/internal/games/bandle/bandletest"
 	"fera-games/internal/store"
+	"fera-games/internal/tui/suggest"
 )
 
 // run executa um cmd (possivelmente Batch) e devolve as mensagens. Cmds que
@@ -175,11 +176,11 @@ func TestTypingAutocompleteAndWin(t *testing.T) {
 func TestSuggestPrefersLiteralMatches(t *testing.T) {
 	f := bandletest.New(t)
 	titles := f.Catalog.Titles()
-	got := suggest("stay with me", append(titles, bandletest.Answer), 6)
+	got := suggest.Match("stay with me", append(titles, bandletest.Answer), 6)
 	if len(got) == 0 || got[0] != "Sam Smith - Stay With Me" {
 		t.Fatalf("substring deveria vir primeiro: %v", got)
 	}
-	got = suggest("smith only", append(titles, bandletest.Answer), 6)
+	got = suggest.Match("smith only", append(titles, bandletest.Answer), 6)
 	found := false
 	for _, s := range got {
 		found = found || s == bandletest.Answer
@@ -187,7 +188,7 @@ func TestSuggestPrefersLiteralMatches(t *testing.T) {
 	if !found {
 		t.Fatalf("fuzzy deveria completar a lista: %v", got)
 	}
-	if len(suggest("x", titles, 3)) != 3 {
+	if len(suggest.Match("x", titles, 3)) != 3 {
 		t.Fatal("limite não respeitado")
 	}
 }

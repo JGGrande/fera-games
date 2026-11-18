@@ -1,3 +1,10 @@
 *.har
+# Credenciais (o .env.example é o modelo e vai para o git).
+.env
+.env.*
+!.env.example
+# JSON de conta de serviço baixado do console do Firebase/Google Cloud.
+*-firebase-adminsdk-*.json
+conta-de-servico*.json
 /fera
 /dist/
